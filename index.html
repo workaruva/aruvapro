@@ -55,6 +55,35 @@
             transform: rotate(360deg);
             }
         }
+        
+        /* Slider styles */
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #4B5563;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366F1;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366F1;
+            cursor: pointer;
+            border: none;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
@@ -67,29 +96,46 @@
                 <input id="usernameInput" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-center text-base" type="text" placeholder="Enter your name">
                 <input id="roomInput" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-center text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" placeholder="ENTER ROOM CODE" maxlength="6">
                 
-                <!-- Audio Settings -->
-                <div class="bg-gray-700 p-4 rounded-md space-y-3">
-                    <h3 class="text-sm font-medium text-gray-300">Audio Settings</h3>
+                <!-- Enhanced Audio Settings -->
+                <div class="bg-gray-700 p-4 rounded-md space-y-4">
+                    <h3 class="text-sm font-medium text-gray-300">Advanced Audio Settings</h3>
                     
-                    <label class="flex items-center justify-between">
-                        <span class="text-sm">Noise Suppression</span>
-                        <input type="checkbox" id="noiseSuppression" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
-                    </label>
-                    
-                    <label class="flex items-center justify-between">
-                        <span class="text-sm">Echo Cancellation</span>
-                        <input type="checkbox" id="echoCancellation" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
-                    </label>
-                    
-                    <label class="flex items-center justify-between">
-                        <span class="text-sm">Auto Gain Control</span>
-                        <input type="checkbox" id="autoGainControl" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
-                    </label>
+                    <div class="space-y-3">
+                        <label class="flex items-center justify-between">
+                            <span class="text-sm">Noise Suppression</span>
+                            <input type="checkbox" id="noiseSuppression" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                        </label>
+                        
+                        <label class="flex items-center justify-between">
+                            <span class="text-sm">Echo Cancellation</span>
+                            <input type="checkbox" id="echoCancellation" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                        </label>
+                        
+                        <label class="flex items-center justify-between">
+                            <span class="text-sm">Auto Gain Control</span>
+                            <input type="checkbox" id="autoGainControl" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                        </label>
 
-                    <label class="flex items-center justify-between">
-                        <span class="text-sm">High Quality Audio</span>
-                        <input type="checkbox" id="highQuality" class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
-                    </label>
+                        <!-- Advanced Filters -->
+                        <div class="space-y-2 pt-2 border-t border-gray-600">
+                            <label class="flex items-center justify-between">
+                                <span class="text-sm">Advanced Noise Gate</span>
+                                <input type="checkbox" id="noiseGate" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                            </label>
+                            
+                            <div class="space-y-1">
+                                <label class="text-xs text-gray-400">Noise Gate Threshold</label>
+                                <input type="range" id="noiseThreshold" min="0.001" max="0.1" step="0.001" value="0.01" class="slider">
+                                <div class="text-xs text-gray-500 text-right" id="thresholdValue">0.01</div>
+                            </div>
+                            
+                            <div class="space-y-1">
+                                <label class="text-xs text-gray-400">Voice Frequency Range</label>
+                                <input type="range" id="voiceRange" min="80" max="8000" step="10" value="4000" class="slider">
+                                <div class="text-xs text-gray-500 text-right" id="rangeValue">80Hz - 4000Hz</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <button id="joinBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 ease-in-out transform hover:scale-105">Join / Create Room</button>
@@ -126,22 +172,33 @@
                     <p id="micStatus" class="text-gray-400">Hold 'M' to talk or use button</p>
                 </div>
 
-                <!-- Audio Settings in Room -->
-                <div class="mt-6 bg-gray-700 p-4 rounded-md space-y-3">
-                    <h3 class="text-sm font-medium text-gray-300">Audio Settings</h3>
+                <!-- Enhanced Audio Settings in Room -->
+                <div class="mt-6 bg-gray-700 p-4 rounded-md space-y-4">
+                    <h3 class="text-sm font-medium text-gray-300">Advanced Audio Settings</h3>
                     <div class="grid grid-cols-2 gap-3">
                         <label class="flex items-center space-x-2">
                             <input type="checkbox" id="roomNoiseSuppression" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
                             <span class="text-xs">Noise Suppression</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="checkbox" id="roomEchoCancellation" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
-                            <span class="text-xs">Echo Cancel</span>
+                            <input type="checkbox" id="roomNoiseGate" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-xs">Noise Gate</span>
                         </label>
                     </div>
-                    <button id="applyAudioSettings" class="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded text-sm transition duration-300">
+                    
+                    <div class="space-y-2">
+                        <div class="space-y-1">
+                            <label class="text-xs text-gray-400">Noise Sensitivity</label>
+                            <input type="range" id="roomNoiseThreshold" min="0.001" max="0.1" step="0.001" value="0.01" class="slider">
+                            <div class="text-xs text-gray-500 text-right" id="roomThresholdValue">0.01</div>
+                        </div>
+                    </div>
+                    
+                    <button id="applyAudioSettings" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded text-sm transition duration-300">
                         Apply Audio Settings
                     </button>
+                    
+                    <p class="text-xs text-gray-400 text-center">Restart audio for changes to take effect</p>
                 </div>
             </div>
         </div>
@@ -168,9 +225,11 @@
         let currentRoom = '';
         let isMicOn = false;
         let audioContext = null;
-        let audioProcessor = null;
         let audioSource = null;
         let audioDestination = null;
+        let noiseGateNode = null;
+        let analyserNode = null;
+        let scriptProcessor = null;
 
         const lobby = document.getElementById('lobby');
         const room = document.getElementById('room');
@@ -191,85 +250,208 @@
         const rejectBtn = document.getElementById('reject-btn');
         const applyAudioSettings = document.getElementById('applyAudioSettings');
 
-        let approvalQueue = [];
-        let isProcessingApproval = false;
-
         // Audio settings elements
         const noiseSuppressionCheckbox = document.getElementById('noiseSuppression');
         const echoCancellationCheckbox = document.getElementById('echoCancellation');
         const autoGainControlCheckbox = document.getElementById('autoGainControl');
-        const highQualityCheckbox = document.getElementById('highQuality');
+        const noiseGateCheckbox = document.getElementById('noiseGate');
+        const noiseThresholdSlider = document.getElementById('noiseThreshold');
+        const voiceRangeSlider = document.getElementById('voiceRange');
+        const thresholdValue = document.getElementById('thresholdValue');
+        const rangeValue = document.getElementById('rangeValue');
+        
         const roomNoiseSuppression = document.getElementById('roomNoiseSuppression');
-        const roomEchoCancellation = document.getElementById('roomEchoCancellation');
+        const roomNoiseGate = document.getElementById('roomNoiseGate');
+        const roomNoiseThreshold = document.getElementById('roomNoiseThreshold');
+        const roomThresholdValue = document.getElementById('roomThresholdValue');
 
-        // Sync room settings with lobby settings
+        let approvalQueue = [];
+        let isProcessingApproval = false;
+
+        // Initialize slider values
         roomNoiseSuppression.checked = noiseSuppressionCheckbox.checked;
-        roomEchoCancellation.checked = echoCancellationCheckbox.checked;
+        roomNoiseGate.checked = noiseGateCheckbox.checked;
+        roomNoiseThreshold.value = noiseThresholdSlider.value;
+        roomThresholdValue.textContent = roomNoiseThreshold.value;
 
-        function processApprovalQueue() {
-            if (isProcessingApproval || approvalQueue.length === 0) return;
-            isProcessingApproval = true;
+        // Update slider displays
+        noiseThresholdSlider.addEventListener('input', () => {
+            thresholdValue.textContent = noiseThresholdSlider.value;
+        });
 
-            const { guestId, username, roomID } = approvalQueue.shift();
+        voiceRangeSlider.addEventListener('input', () => {
+            rangeValue.textContent = `80Hz - ${voiceRangeSlider.value}Hz`;
+        });
 
-            approvalMessage.textContent = `User "${username || 'Guest'}" wants to join.`;
-            approvalModal.classList.remove('hidden');
+        roomNoiseThreshold.addEventListener('input', () => {
+            roomThresholdValue.textContent = roomNoiseThreshold.value;
+        });
 
-            const handleApproval = (accept) => {
-                socket.emit('approve-user', { roomID, guestId, accept });
-                approvalModal.classList.add('hidden');
-                isProcessingApproval = false;
-                processApprovalQueue();
-            };
+        // Advanced noise gate implementation
+        function createNoiseGate(audioContext, threshold = 0.01) {
+            const workletCode = `
+                class NoiseGateProcessor extends AudioWorkletProcessor {
+                    constructor() {
+                        super();
+                        this.threshold = 0.01;
+                        this.isOpen = false;
+                        this.smoothing = 0.98;
+                        this.currentGain = 0;
+                    }
+                    
+                    static get parameterDescriptors() {
+                        return [{
+                            name: 'threshold',
+                            defaultValue: 0.01,
+                            minValue: 0.001,
+                            maxValue: 0.1
+                        }];
+                    }
+                    
+                    process(inputs, outputs, parameters) {
+                        const input = inputs[0];
+                        const output = outputs[0];
+                        const threshold = parameters.threshold[0];
+                        
+                        if (input.length > 0) {
+                            const inputChannel = input[0];
+                            let sum = 0;
+                            
+                            // Calculate RMS volume
+                            for (let i = 0; i < inputChannel.length; i++) {
+                                sum += inputChannel[i] * inputChannel[i];
+                            }
+                            const rms = Math.sqrt(sum / inputChannel.length);
+                            
+                            // Noise gate logic
+                            const targetGain = rms > threshold ? 1 : 0;
+                            this.currentGain = this.currentGain * this.smoothing + targetGain * (1 - this.smoothing);
+                            
+                            // Apply gain
+                            for (let channel = 0; channel < output.length; channel++) {
+                                const inputChannel = input[channel];
+                                const outputChannel = output[channel];
+                                
+                                if (inputChannel && outputChannel) {
+                                    for (let i = 0; i < inputChannel.length; i++) {
+                                        outputChannel[i] = inputChannel[i] * this.currentGain;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        return true;
+                    }
+                }
+                
+                registerProcessor('noise-gate-processor', NoiseGateProcessor);
+            `;
 
-            approveBtn.onclick = () => handleApproval(true);
-            rejectBtn.onclick = () => handleApproval(false);
+            const blob = new Blob([workletCode], { type: 'application/javascript' });
+            const url = URL.createObjectURL(blob);
+            
+            return audioContext.audioWorklet.addModule(url).then(() => {
+                const noiseGate = new AudioWorkletNode(audioContext, 'noise-gate-processor');
+                noiseGate.parameters.get('threshold').value = threshold;
+                return noiseGate;
+            }).catch(err => {
+                console.warn('AudioWorklet not supported, using fallback:', err);
+                return createFallbackNoiseGate(audioContext, threshold);
+            });
         }
 
-        // Enhanced audio processing with Web Audio API
-        async function createProcessedAudioStream(stream) {
+        // Fallback noise gate for browsers without AudioWorklet support
+        function createFallbackNoiseGate(audioContext, threshold = 0.01) {
+            const processor = audioContext.createScriptProcessor(256, 1, 1);
+            let isOpen = false;
+            let currentGain = 0;
+            const smoothing = 0.98;
+            
+            processor.onaudioprocess = function(event) {
+                const input = event.inputBuffer.getChannelData(0);
+                const output = event.outputBuffer.getChannelData(0);
+                let sum = 0;
+                
+                // Calculate RMS volume
+                for (let i = 0; i < input.length; i++) {
+                    sum += input[i] * input[i];
+                }
+                const rms = Math.sqrt(sum / input.length);
+                
+                // Noise gate logic
+                const targetGain = rms > threshold ? 1 : 0;
+                currentGain = currentGain * smoothing + targetGain * (1 - smoothing);
+                
+                // Apply gain
+                for (let i = 0; i < input.length; i++) {
+                    output[i] = input[i] * currentGain;
+                }
+            };
+            
+            return processor;
+        }
+
+        async function createEnhancedAudioStream(stream) {
             try {
-                // Clean up previous audio context if exists
+                // Clean up previous audio context
                 if (audioContext) {
                     await audioContext.close();
                 }
 
-                audioContext = new AudioContext();
+                audioContext = new AudioContext({ sampleRate: 48000 });
                 audioSource = audioContext.createMediaStreamSource(stream);
                 audioDestination = audioContext.createMediaStreamDestination();
 
-                // Create audio nodes for processing
+                // Get current settings
+                const useNoiseGate = roomNoiseGate.checked;
+                const threshold = parseFloat(roomNoiseThreshold.value);
+                const voiceRange = parseInt(voiceRangeSlider.value);
+
+                // Create audio processing chain
+                let lastNode = audioSource;
+
+                // High-pass filter to remove low-frequency noise
                 const highPassFilter = audioContext.createBiquadFilter();
                 highPassFilter.type = 'highpass';
-                highPassFilter.frequency.value = 80; // Remove low-frequency noise
+                highPassFilter.frequency.value = 80;
+                lastNode.connect(highPassFilter);
+                lastNode = highPassFilter;
 
+                // Low-pass filter to remove high-frequency noise
                 const lowPassFilter = audioContext.createBiquadFilter();
                 lowPassFilter.type = 'lowpass';
-                lowPassFilter.frequency.value = 8000; // Remove high-frequency noise
+                lowPassFilter.frequency.value = voiceRange;
+                lastNode.connect(lowPassFilter);
+                lastNode = lowPassFilter;
 
+                // Noise gate for advanced noise suppression
+                if (useNoiseGate) {
+                    try {
+                        noiseGateNode = await createNoiseGate(audioContext, threshold);
+                        lastNode.connect(noiseGateNode);
+                        lastNode = noiseGateNode;
+                    } catch (err) {
+                        console.warn('Noise gate failed, continuing without it:', err);
+                    }
+                }
+
+                // Compressor for consistent volume
                 const compressor = audioContext.createDynamicsCompressor();
                 compressor.threshold.value = -24;
                 compressor.knee.value = 30;
                 compressor.ratio.value = 12;
                 compressor.attack.value = 0.003;
                 compressor.release.value = 0.25;
+                lastNode.connect(compressor);
+                lastNode = compressor;
 
-                // Connect the processing chain based on settings
-                audioSource.connect(highPassFilter);
-                
-                if (roomNoiseSuppression.checked) {
-                    highPassFilter.connect(lowPassFilter);
-                    lowPassFilter.connect(compressor);
-                } else {
-                    highPassFilter.connect(compressor);
-                }
-                
-                compressor.connect(audioDestination);
+                // Final connection
+                lastNode.connect(audioDestination);
 
                 return audioDestination.stream;
 
             } catch (error) {
-                console.warn('Web Audio API not supported, using original stream:', error);
+                console.warn('Enhanced audio processing failed, using original stream:', error);
                 return stream;
             }
         }
@@ -281,36 +463,49 @@
                     echoCancellation: echoCancellationCheckbox.checked,
                     autoGainControl: autoGainControlCheckbox.checked,
                     channelCount: 1,
-                    sampleRate: highQualityCheckbox.checked ? 48000 : 24000,
-                    sampleSize: highQualityCheckbox.checked ? 16 : 8,
-                    latency: highQualityCheckbox.checked ? 0.01 : 0.02
+                    sampleRate: 48000,
+                    sampleSize: 16,
+                    latency: 0.01
                 },
                 video: false
             };
 
             try {
+                console.log('Requesting media with constraints:', constraints);
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
-                // Apply additional Web Audio API processing if noise suppression is enabled
-                if (noiseSuppressionCheckbox.checked) {
-                    return await createProcessedAudioStream(stream);
-                }
+                // Always apply enhanced processing for better noise suppression
+                const processedStream = await createEnhancedAudioStream(stream);
+                console.log('Audio stream processed with enhanced noise suppression');
                 
-                return stream;
+                return processedStream;
             } catch (err) {
-                console.error('Error accessing media with constraints:', err);
+                console.error('Error accessing media with constraints:', err, 'Trying fallback...');
                 // Fallback to basic audio
-                return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: true, 
+                        video: false 
+                    });
+                    return await createEnhancedAudioStream(fallbackStream);
+                } catch (fallbackErr) {
+                    console.error('Fallback also failed:', fallbackErr);
+                    throw fallbackErr;
+                }
             }
         }
 
         async function updateAudioSettings() {
             if (!localStream) return;
 
-            // Stop current tracks
-            localStream.getTracks().forEach(track => track.stop());
+            // Show loading state
+            applyAudioSettings.textContent = 'Applying...';
+            applyAudioSettings.disabled = true;
 
             try {
+                // Stop current tracks
+                localStream.getTracks().forEach(track => track.stop());
+
                 // Get new stream with updated settings
                 localStream = await getMediaStreamWithSettings();
                 
@@ -324,7 +519,9 @@
                     );
                     
                     if (audioSender && audioTrack) {
-                        audioSender.replaceTrack(audioTrack);
+                        audioSender.replaceTrack(audioTrack).catch(err => {
+                            console.warn('Failed to replace track:', err);
+                        });
                     }
                 });
 
@@ -334,10 +531,21 @@
                 });
 
                 console.log('Audio settings updated successfully');
+                lobbyError.textContent = 'Audio settings updated successfully';
+                lobbyError.classList.remove('text-red-400');
+                lobbyError.classList.add('text-green-400');
 
             } catch (err) {
                 console.error('Error updating audio settings:', err);
-                lobbyError.textContent = 'Failed to update audio settings';
+                lobbyError.textContent = 'Failed to update audio settings: ' + err.message;
+                lobbyError.classList.remove('text-green-400');
+                lobbyError.classList.add('text-red-400');
+            } finally {
+                // Reset button state
+                setTimeout(() => {
+                    applyAudioSettings.textContent = 'Apply Audio Settings';
+                    applyAudioSettings.disabled = false;
+                }, 1000);
             }
         }
 
@@ -393,8 +601,13 @@
             noiseSuppressionCheckbox.checked = roomNoiseSuppression.checked;
         });
 
-        roomEchoCancellation.addEventListener('change', () => {
-            echoCancellationCheckbox.checked = roomEchoCancellation.checked;
+        roomNoiseGate.addEventListener('change', () => {
+            noiseGateCheckbox.checked = roomNoiseGate.checked;
+        });
+
+        roomNoiseThreshold.addEventListener('input', () => {
+            noiseThresholdSlider.value = roomNoiseThreshold.value;
+            thresholdValue.textContent = noiseThresholdSlider.value;
         });
 
         joinBtn.addEventListener('click', () => {
@@ -582,6 +795,27 @@
             const pc = pcMap.get(sender);
             if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
         });
+
+        // Process approval queue
+        function processApprovalQueue() {
+            if (isProcessingApproval || approvalQueue.length === 0) return;
+            isProcessingApproval = true;
+
+            const { guestId, username, roomID } = approvalQueue.shift();
+
+            approvalMessage.textContent = `User "${username || 'Guest'}" wants to join.`;
+            approvalModal.classList.remove('hidden');
+
+            const handleApproval = (accept) => {
+                socket.emit('approve-user', { roomID, guestId, accept });
+                approvalModal.classList.add('hidden');
+                isProcessingApproval = false;
+                processApprovalQueue();
+            };
+
+            approveBtn.onclick = () => handleApproval(true);
+            rejectBtn.onclick = () => handleApproval(false);
+        }
     </script>
 </body>
 </html>
