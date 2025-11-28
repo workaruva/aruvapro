@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .ring-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
+        }
+        .spinner {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+        }
+
+        .spinner::before,
+        .spinner::after {
+            content: "";
+            position: absolute;
+            border-radius: inherit;
+        }
+
+        .spinner::before {
+            width: 100%;
+            height: 100%;
+            top: 20%;
+            left: 10%;
+            background-image: linear-gradient(0deg, #ff00cc 0%, #333399 100%);
+            animation: spin8932 0.5s infinite linear;
+        }
+        .spinner::after{
+            width: 85%;
+            height: 85%;
+            background-color: #111827;
+            top: 28%;
+            left: 17%;
+        }
+        @keyframes spin8932 {
+            to {
+            transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+    <div id="app" class="w-full max-w-md mx-auto p-4">
+
+        <!-- Lobby -->
+        <div id="lobby" class="bg-gray-800 p-8 rounded-lg shadow-xl space-y-6">
+            <h1 class="text-3xl font-bold text-center text-white">Voice Chat</h1>
+            <div class="space-y-4">
+                <input id="usernameInput" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-center text-base" type="text" placeholder="Enter your name">
+                <input id="roomInput" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-center text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" type="text" placeholder="ENTER ROOM CODE" maxlength="6">
+                
+                <!-- Audio Settings -->
+                <div class="bg-gray-700 p-4 rounded-md space-y-3">
+                    <h3 class="text-sm font-medium text-gray-300">Audio Settings</h3>
+                    
+                    <label class="flex items-center justify-between">
+                        <span class="text-sm">Noise Suppression</span>
+                        <input type="checkbox" id="noiseSuppression" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                    </label>
+                    
+                    <label class="flex items-center justify-between">
+                        <span class="text-sm">Echo Cancellation</span>
+                        <input type="checkbox" id="echoCancellation" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                    </label>
+                    
+                    <label class="flex items-center justify-between">
+                        <span class="text-sm">Auto Gain Control</span>
+                        <input type="checkbox" id="autoGainControl" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                    </label>
+
+                    <label class="flex items-center justify-between">
+                        <span class="text-sm">High Quality Audio</span>
+                        <input type="checkbox" id="highQuality" class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                    </label>
+                </div>
+
+                <button id="joinBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 ease-in-out transform hover:scale-105">Join / Create Room</button>
+            </div>
+            <p id="lobby-error" class="text-red-400 text-center"></p>
+        </div>
+        <!-- lobby loading -->
+         <div id="loading-screen" class="hidden flex flex-col items-center justify-center text-center space-y-4">
+            <div class="spinner mx-auto"></div>
+            <p class="text-xl font-semibold text-white">You're in the lobby.</p>
+            <p class="text-gray-400">wait for host to let you in..</p>
+        </div>
+
+        <!-- Room -->
+        <div id="room" class="hidden">
+            <div class="bg-gray-800 p-8 rounded-lg shadow-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold">Room Code: <span id="roomCodeDisplay" class="text-indigo-400 font-mono"></span></h2>
+                        <p class="text-sm text-gray-400">Your ID: <span id="myId" class="font-mono"></span></p>
+                    </div>
+                    <button id="leaveBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Leave</button>
+                </div>
+
+                <div id="participants" class="grid grid-cols-2 gap-4">
+                    <!-- Guests -->
+                </div>
+
+                <div class="mt-6 flex justify-center">
+                    <button id="micToggleBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full text-lg">🎤 Unmute</button>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <p id="micStatus" class="text-gray-400">Hold 'M' to talk or use button</p>
+                </div>
+
+                <!-- Audio Settings in Room -->
+                <div class="mt-6 bg-gray-700 p-4 rounded-md space-y-3">
+                    <h3 class="text-sm font-medium text-gray-300">Audio Settings</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="roomNoiseSuppression" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-xs">Noise Suppression</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="roomEchoCancellation" checked class="rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-xs">Echo Cancel</span>
+                        </label>
+                    </div>
+                    <button id="applyAudioSettings" class="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded text-sm transition duration-300">
+                        Apply Audio Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="audio-container"></div>
+
+        <div id="approval-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl text-center">
+                <p id="approval-message" class="mb-4 text-lg"></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="approve-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-24">Approve</button>
+                    <button id="reject-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded w-24">Reject</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const pcMap = new Map();
+        let localStream;
+        let myId = '';
+        let currentRoom = '';
+        let isMicOn = false;
+        let audioContext = null;
+        let audioProcessor = null;
+        let audioSource = null;
+        let audioDestination = null;
+
+        const lobby = document.getElementById('lobby');
+        const room = document.getElementById('room');
+        const joinBtn = document.getElementById('joinBtn');
+        const roomInput = document.getElementById('roomInput');
+        const leaveBtn = document.getElementById('leaveBtn');
+        const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+        const participants = document.getElementById('participants');
+        const audioContainer = document.getElementById('audio-container');
+        const myIdDisplay = document.getElementById('myId');
+        const lobbyError = document.getElementById('lobby-error');
+        const micToggleBtn = document.getElementById('micToggleBtn');
+        const usernameInput = document.getElementById('usernameInput');
+        const micStatus = document.getElementById('micStatus');
+        const approvalModal = document.getElementById('approval-modal');
+        const approvalMessage = document.getElementById('approval-message');
+        const approveBtn = document.getElementById('approve-btn');
+        const rejectBtn = document.getElementById('reject-btn');
+        const applyAudioSettings = document.getElementById('applyAudioSettings');
+
+        let approvalQueue = [];
+        let isProcessingApproval = false;
+
+        // Audio settings elements
+        const noiseSuppressionCheckbox = document.getElementById('noiseSuppression');
+        const echoCancellationCheckbox = document.getElementById('echoCancellation');
+        const autoGainControlCheckbox = document.getElementById('autoGainControl');
+        const highQualityCheckbox = document.getElementById('highQuality');
+        const roomNoiseSuppression = document.getElementById('roomNoiseSuppression');
+        const roomEchoCancellation = document.getElementById('roomEchoCancellation');
+
+        // Sync room settings with lobby settings
+        roomNoiseSuppression.checked = noiseSuppressionCheckbox.checked;
+        roomEchoCancellation.checked = echoCancellationCheckbox.checked;
+
+        function processApprovalQueue() {
+            if (isProcessingApproval || approvalQueue.length === 0) return;
+            isProcessingApproval = true;
+
+            const { guestId, username, roomID } = approvalQueue.shift();
+
+            approvalMessage.textContent = `User "${username || 'Guest'}" wants to join.`;
+            approvalModal.classList.remove('hidden');
+
+            const handleApproval = (accept) => {
+                socket.emit('approve-user', { roomID, guestId, accept });
+                approvalModal.classList.add('hidden');
+                isProcessingApproval = false;
+                processApprovalQueue();
+            };
+
+            approveBtn.onclick = () => handleApproval(true);
+            rejectBtn.onclick = () => handleApproval(false);
+        }
+
+        // Enhanced audio processing with Web Audio API
+        async function createProcessedAudioStream(stream) {
+            try {
+                // Clean up previous audio context if exists
+                if (audioContext) {
+                    await audioContext.close();
+                }
+
+                audioContext = new AudioContext();
+                audioSource = audioContext.createMediaStreamSource(stream);
+                audioDestination = audioContext.createMediaStreamDestination();
+
+                // Create audio nodes for processing
+                const highPassFilter = audioContext.createBiquadFilter();
+                highPassFilter.type = 'highpass';
+                highPassFilter.frequency.value = 80; // Remove low-frequency noise
+
+                const lowPassFilter = audioContext.createBiquadFilter();
+                lowPassFilter.type = 'lowpass';
+                lowPassFilter.frequency.value = 8000; // Remove high-frequency noise
+
+                const compressor = audioContext.createDynamicsCompressor();
+                compressor.threshold.value = -24;
+                compressor.knee.value = 30;
+                compressor.ratio.value = 12;
+                compressor.attack.value = 0.003;
+                compressor.release.value = 0.25;
+
+                // Connect the processing chain based on settings
+                audioSource.connect(highPassFilter);
+                
+                if (roomNoiseSuppression.checked) {
+                    highPassFilter.connect(lowPassFilter);
+                    lowPassFilter.connect(compressor);
+                } else {
+                    highPassFilter.connect(compressor);
+                }
+                
+                compressor.connect(audioDestination);
+
+                return audioDestination.stream;
+
+            } catch (error) {
+                console.warn('Web Audio API not supported, using original stream:', error);
+                return stream;
+            }
+        }
+
+        async function getMediaStreamWithSettings() {
+            const constraints = {
+                audio: {
+                    noiseSuppression: noiseSuppressionCheckbox.checked,
+                    echoCancellation: echoCancellationCheckbox.checked,
+                    autoGainControl: autoGainControlCheckbox.checked,
+                    channelCount: 1,
+                    sampleRate: highQualityCheckbox.checked ? 48000 : 24000,
+                    sampleSize: highQualityCheckbox.checked ? 16 : 8,
+                    latency: highQualityCheckbox.checked ? 0.01 : 0.02
+                },
+                video: false
+            };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Apply additional Web Audio API processing if noise suppression is enabled
+                if (noiseSuppressionCheckbox.checked) {
+                    return await createProcessedAudioStream(stream);
+                }
+                
+                return stream;
+            } catch (err) {
+                console.error('Error accessing media with constraints:', err);
+                // Fallback to basic audio
+                return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            }
+        }
+
+        async function updateAudioSettings() {
+            if (!localStream) return;
+
+            // Stop current tracks
+            localStream.getTracks().forEach(track => track.stop());
+
+            try {
+                // Get new stream with updated settings
+                localStream = await getMediaStreamWithSettings();
+                
+                // Update all peer connections with new stream
+                pcMap.forEach((pc, peerId) => {
+                    const senders = pc.getSenders();
+                    const audioTrack = localStream.getAudioTracks()[0];
+                    
+                    const audioSender = senders.find(sender => 
+                        sender.track && sender.track.kind === 'audio'
+                    );
+                    
+                    if (audioSender && audioTrack) {
+                        audioSender.replaceTrack(audioTrack);
+                    }
+                });
+
+                // Update local stream tracks state
+                localStream.getTracks().forEach(track => {
+                    track.enabled = isMicOn;
+                });
+
+                console.log('Audio settings updated successfully');
+
+            } catch (err) {
+                console.error('Error updating audio settings:', err);
+                lobbyError.textContent = 'Failed to update audio settings';
+            }
+        }
+
+        async function init() {
+            try {
+                localStream = await getMediaStreamWithSettings();
+                localStream.getTracks().forEach(track => track.enabled = false);
+                myId = socket.id;
+                myIdDisplay.textContent = myId;
+                addParticipantCard(myId, true, usernameInput.value);
+            } catch (err) {
+                console.error('Microphone access error:', err);
+                lobbyError.textContent = 'Microphone access is required to use this app.';
+                joinBtn.disabled = true;
+            }
+        }
+
+        function toggleMic(state) {
+            if (!localStream) return;
+            isMicOn = state;
+            localStream.getTracks().forEach(track => track.enabled = isMicOn);
+            micToggleBtn.textContent = isMicOn ? "🔇 Mute" : "🎤 Unmute";
+            micToggleBtn.classList.toggle('bg-indigo-500', isMicOn);
+            micToggleBtn.classList.toggle('bg-gray-600', !isMicOn);
+            
+            micStatus.textContent = isMicOn ? "You are talking..." : "Hold 'M' to talk or use button";
+            micStatus.classList.toggle('text-green-400', isMicOn);
+            micStatus.classList.remove('text-gray-400');
+            
+            updateSpeakingStatus(myId, isMicOn);
+            socket.emit('speaking', { roomID: currentRoom, speaking: isMicOn });
+        }
+        
+        micToggleBtn.addEventListener('click', () => toggleMic(!isMicOn));
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'm' && document.activeElement !== roomInput && document.activeElement !== usernameInput) {
+                if (!isMicOn) {
+                    toggleMic(true);
+                }
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'm' && document.activeElement !== roomInput && document.activeElement !== usernameInput) {
+                toggleMic(false);
+            }
+        });
+
+        // Apply audio settings button
+        applyAudioSettings.addEventListener('click', updateAudioSettings);
+
+        // Sync lobby and room audio settings
+        roomNoiseSuppression.addEventListener('change', () => {
+            noiseSuppressionCheckbox.checked = roomNoiseSuppression.checked;
+        });
+
+        roomEchoCancellation.addEventListener('change', () => {
+            echoCancellationCheckbox.checked = roomEchoCancellation.checked;
+        });
+
+        joinBtn.addEventListener('click', () => {
+            const code = roomInput.value.trim().toUpperCase();
+            const username = usernameInput.value.trim();
+            if (code.length < 4) {
+                 lobbyError.textContent = 'Room code must be at least 4 characters.';
+                 return;
+            }
+            if (!username) {
+                lobbyError.textContent = 'Please enter your name.';
+                return;
+            }
+            addParticipantCard(myId, true, username);
+            lobby.classList.add('hidden');
+            document.getElementById('loading-screen').classList.remove('hidden');
+            socket.emit('join', { roomID: code, username });
+            currentRoom = code;
+        });
+
+        leaveBtn.addEventListener('click', () => {
+            // Clean up audio context
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            socket.emit('leave', currentRoom);
+            showLobby();
+        });
+
+        function showRoom(code) {
+            document.getElementById('loading-screen').classList.add('hidden');
+            lobby.classList.add('hidden');
+            room.classList.remove('hidden');
+            roomCodeDisplay.textContent = code;
+        }
+
+        function showLobby() {
+            lobby.classList.remove('hidden');
+            room.classList.add('hidden');
+            participants.innerHTML = '';
+            audioContainer.innerHTML = '';
+            pcMap.forEach(pc => pc.close());
+            pcMap.clear();
+            currentRoom = '';
+            lobbyError.textContent = '';
+            toggleMic(false);
+            if (myId) {
+                addParticipantCard(myId, true, usernameInput.value);
+            }
+        }
+
+        function addParticipantCard(id, isSelf = false, username = '') {
+            const existingCard = document.getElementById(`participant-${id}`);
+            if (existingCard) {
+                existingCard.querySelector('p').textContent = isSelf
+                    ? `You (${username || 'Me'})`
+                    : `${username || 'Guest'} (${id.substring(0, 4)})`;
+                return;
+            }
+
+            const card = document.createElement('div');
+            card.id = `participant-${id}`;
+            card.className = 'bg-gray-700 p-4 rounded-lg flex items-center space-x-3';
+
+            const ring = document.createElement('div');
+            ring.className = `w-4 h-4 rounded-full ${isSelf ? 'bg-blue-400' : 'bg-gray-500'}`;
+            ring.id = `status-ring-${id}`;
+
+            const name = document.createElement('p');
+            name.className = 'font-medium truncate';
+            name.textContent = isSelf
+                ? `You (${username || 'Me'})`
+                : `${username || 'Guest'} (${id.substring(0, 4)})`;
+            
+            card.appendChild(ring);
+            card.appendChild(name);
+            participants.appendChild(card);
+        }
+
+        function removeParticipantCard(id) {
+            const card = document.getElementById(`participant-${id}`);
+            if (card) card.remove();
+        }
+
+        function updateSpeakingStatus(id, isSpeaking) {
+            const ring = document.getElementById(`status-ring-${id}`);
+            if (ring) {
+                if (isSpeaking) {
+                    ring.classList.add('ring-pulse', 'bg-green-400');
+                    ring.classList.remove('bg-gray-500', 'bg-blue-400');
+                } else {
+                    ring.classList.remove('ring-pulse', 'bg-green-400');
+                    const isSelf = document.getElementById(`participant-${id}`).textContent.startsWith('You');
+                    ring.classList.add(isSelf ? 'bg-blue-400' : 'bg-gray-500');
+                }
+            }
+        }
+
+        socket.on('connect', init);
+        socket.on('room-created', (code) => showRoom(code));
+        socket.on('join-accepted', ({ roomID, existingUsers, usernames }) => {
+            showRoom(roomID);
+            existingUsers.forEach(id => {
+                addParticipantCard(id, false, usernames[id]);
+                createPeerConnection(id, true);
+            });
+        });
+        socket.on('approval-request', ({ guestId, username, roomID }) => {
+            approvalQueue.push({ guestId, username, roomID });
+            processApprovalQueue();
+        });
+        socket.on('new-user', ({ id, username }) => {
+            addParticipantCard(id, false, username);
+        });
+        socket.on('user-disconnected', (userId) => {
+            const pc = pcMap.get(userId);
+            if (pc) {
+                pc.close();
+                pcMap.delete(userId);
+            }
+            removeParticipantCard(userId);
+            const audioEl = document.getElementById(`audio-${userId}`);
+            if (audioEl) audioEl.remove();
+        });
+
+        socket.on('room-full', () => {
+            document.getElementById('loading-screen').classList.add('hidden');
+            lobby.classList.remove('hidden');
+            lobbyError.textContent = 'Sorry, that room is full.';
+        });
+
+        socket.on('join-rejected', () => {
+            document.getElementById('loading-screen').classList.add('hidden');
+            lobby.classList.remove('hidden');
+            lobbyError.textContent = 'Your request to join was rejected.';
+        });
+
+        socket.on('user-speaking', ({ userId, speaking }) => {
+            updateSpeakingStatus(userId, speaking);
+        });
+
+        async function createPeerConnection(peerId, isOfferer) {
+            if (!localStream) return;
+            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            pcMap.set(peerId, pc);
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', { target: peerId, candidate: event.candidate });
+                }
+            };
+            pc.ontrack = (event) => {
+                let audioEl = document.getElementById(`audio-${peerId}`);
+                if (!audioEl) {
+                    audioEl = document.createElement('audio');
+                    audioEl.id = `audio-${peerId}`;
+                    audioEl.autoplay = true;
+                    audioContainer.appendChild(audioEl);
+                }
+                audioEl.srcObject = event.streams[0];
+            };
+            if (isOfferer) {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                socket.emit('offer', { target: peerId, sdp: pc.localDescription });
+            }
+        }
+
+        socket.on('offer', async ({ caller, sdp }) => {
+            await createPeerConnection(caller, false);
+            const pc = pcMap.get(caller);
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('answer', { target: caller, sdp: pc.localDescription });
+        });
+
+        socket.on('answer', async ({ callee, sdp }) => {
+            const pc = pcMap.get(callee);
+            if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        });
+
+        socket.on('ice-candidate', async ({ sender, candidate }) => {
+            const pc = pcMap.get(sender);
+            if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        });
+    </script>
+</body>
+</html>
