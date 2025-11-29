@@ -4,10 +4,6 @@ let localStream;
 let myId = '';
 let currentRoom = '';
 let isMicOn = false;
-let audioContext = null;
-// УДАЛИТЬ эту строку: let audioProcessor = null;
-let audioSource = null;
-let audioDestination = null;
 
 // Элементы DOM
 const lobby = document.getElementById('lobby');
@@ -40,13 +36,94 @@ const roomEchoCancellation = document.getElementById('roomEchoCancellation');
 let approvalQueue = [];
 let isProcessingApproval = false;
 
-// Enhanced audio processing with Web Audio API
-class AudioProcessor {
+// RNNoise Audio Processor
+class RNNoiseProcessor {
     constructor() {
         this.audioContext = null;
         this.source = null;
         this.destination = null;
-        this.processor = null;
+        this.rnnoiseNode = null;
+        this.isInitialized = false;
+        this.isEnabled = true;
+    }
+
+    async initialize() {
+        if (this.isInitialized) return;
+        
+        try {
+            // Initialize RNNoise
+            if (typeof RNNoise === 'undefined') {
+                console.warn('RNNoise not loaded, using fallback');
+                this.isEnabled = false;
+                return;
+            }
+            
+            await RNNoise.init();
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.isInitialized = true;
+            console.log('RNNoise initialized successfully');
+        } catch (error) {
+            console.warn('RNNoise initialization failed:', error);
+            this.isEnabled = false;
+        }
+    }
+
+    async createProcessedAudioStream(originalStream) {
+        if (!this.isInitialized) {
+            await this.initialize();
+        }
+
+        // If RNNoise is not available, return original stream
+        if (!this.isEnabled || !noiseSuppressionCheckbox.checked) {
+            return originalStream;
+        }
+
+        try {
+            // Clean up previous nodes
+            if (this.source) {
+                this.source.disconnect();
+            }
+
+            this.source = this.audioContext.createMediaStreamSource(originalStream);
+            this.destination = this.audioContext.createMediaStreamDestination();
+
+            // Create RNNoise node
+            this.rnnoiseNode = await RNNoise.create(this.audioContext);
+            
+            // Connect: Source -> RNNoise -> Destination
+            this.source.connect(this.rnnoiseNode);
+            this.rnnoiseNode.connect(this.destination);
+
+            console.log('RNNoise noise suppression activated');
+            return this.destination.stream;
+
+        } catch (error) {
+            console.warn('RNNoise processing failed, using original stream:', error);
+            return originalStream;
+        }
+    }
+
+    async close() {
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            await this.audioContext.close();
+        }
+        this.audioContext = null;
+        this.isInitialized = false;
+    }
+
+    setEnabled(enabled) {
+        this.isEnabled = enabled;
+    }
+}
+
+const rnnoiseProcessor = new RNNoiseProcessor();
+
+// Enhanced Web Audio API Processor (fallback)
+class WebAudioProcessor {
+    constructor() {
+        this.audioContext = null;
+        this.source = null;
+        this.destination = null;
         this.isInitialized = false;
     }
 
@@ -55,7 +132,6 @@ class AudioProcessor {
         
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            await this.audioContext.resume();
             this.isInitialized = true;
         } catch (error) {
             console.warn('Web Audio API not supported:', error);
@@ -72,7 +148,6 @@ class AudioProcessor {
         }
 
         try {
-            // Close previous connections if they exist
             if (this.source) {
                 this.source.disconnect();
             }
@@ -80,64 +155,54 @@ class AudioProcessor {
             this.source = this.audioContext.createMediaStreamSource(originalStream);
             this.destination = this.audioContext.createMediaStreamDestination();
 
-            // Create audio processing nodes
+            // Create advanced audio processing chain
             const highPassFilter = this.audioContext.createBiquadFilter();
             highPassFilter.type = 'highpass';
-            highPassFilter.frequency.value = 100; // Remove low-frequency rumble
+            highPassFilter.frequency.value = 80; // Remove low rumble
 
             const lowPassFilter = this.audioContext.createBiquadFilter();
             lowPassFilter.type = 'lowpass';
-            lowPassFilter.frequency.value = 7000; // Remove high-frequency noise
+            lowPassFilter.frequency.value = 8000; // Remove high noise
+
+            const notchFilter = this.audioContext.createBiquadFilter();
+            notchFilter.type = 'notch';
+            notchFilter.frequency.value = 300; // Remove 50Hz hum (if any)
 
             const compressor = this.audioContext.createDynamicsCompressor();
-            compressor.threshold.value = -20;
-            compressor.knee.value = 10;
-            compressor.ratio.value = 4;
-            compressor.attack.value = 0.01;
+            compressor.threshold.value = -30;
+            compressor.knee.value = 20;
+            compressor.ratio.value = 6;
+            compressor.attack.value = 0.005;
             compressor.release.value = 0.1;
 
-            // Connect processing chain based on settings
+            // Connect processing chain
             this.source.connect(highPassFilter);
-            
-            if (noiseSuppressionCheckbox.checked) {
-                highPassFilter.connect(lowPassFilter);
-                lowPassFilter.connect(compressor);
-            } else {
-                highPassFilter.connect(compressor);
-            }
-            
+            highPassFilter.connect(notchFilter);
+            notchFilter.connect(lowPassFilter);
+            lowPassFilter.connect(compressor);
             compressor.connect(this.destination);
 
-            console.log('Audio processing activated');
+            console.log('Web Audio noise suppression activated');
             return this.destination.stream;
 
         } catch (error) {
-            console.warn('Audio processing failed, using original stream:', error);
+            console.warn('Web Audio processing failed:', error);
             return originalStream;
         }
     }
 
-    async updateAudioSettings() {
-        if (this.source && this.destination) {
-            // Recreate processing chain with new settings
-            this.source.disconnect();
-            return this.createProcessedAudioStream(localStream);
-        }
-    }
-
     async close() {
-        if (this.audioContext) {
+        if (this.audioContext && this.audioContext.state !== 'closed') {
             await this.audioContext.close();
-            this.audioContext = null;
-            this.isInitialized = false;
         }
+        this.audioContext = null;
+        this.isInitialized = false;
     }
 }
 
-// СОЗДАЕМ ТОЛЬКО ОДИН ЭКЗЕМПЛЯР AudioProcessor
-const audioProcessor = new AudioProcessor();
+const webAudioProcessor = new WebAudioProcessor();
 
-// Enhanced media stream with better constraints
+// Main media stream function
 async function getMediaStreamWithSettings() {
     const constraints = {
         audio: {
@@ -145,15 +210,14 @@ async function getMediaStreamWithSettings() {
             echoCancellation: echoCancellationCheckbox.checked,
             autoGainControl: autoGainControlCheckbox.checked,
             channelCount: 1,
-            sampleRate: highQualityCheckbox.checked ? 48000 : 24000,
+            sampleRate: 48000,
             sampleSize: 16,
-            latency: 0.01,
-            // Advanced constraints for better quality
+            // Advanced constraints
             googEchoCancellation: echoCancellationCheckbox.checked,
             googAutoGainControl: autoGainControlCheckbox.checked,
             googNoiseSuppression: noiseSuppressionCheckbox.checked,
             googHighpassFilter: true,
-            googAudioMirroring: false
+            googNoiseReduction: noiseSuppressionCheckbox.checked
         },
         video: false
     };
@@ -163,42 +227,31 @@ async function getMediaStreamWithSettings() {
     try {
         let stream = await navigator.mediaDevices.getUserMedia(constraints);
         
-        // Apply additional Web Audio API processing
+        // Apply RNNoise processing if enabled
         if (noiseSuppressionCheckbox.checked) {
-            stream = await audioProcessor.createProcessedAudioStream(stream);
+            try {
+                stream = await rnnoiseProcessor.createProcessedAudioStream(stream);
+            } catch (rnnoiseError) {
+                console.warn('RNNoise failed, trying Web Audio:', rnnoiseError);
+                stream = await webAudioProcessor.createProcessedAudioStream(stream);
+            }
         }
         
         return stream;
     } catch (err) {
-        console.error('Error accessing media with constraints:', err);
+        console.error('Error accessing media:', err);
         
-        // Fallback strategies
+        // Fallback to basic audio
         try {
-            // Try with basic constraints
-            const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    noiseSuppression: true,
-                    echoCancellation: true
-                }, 
+            const basicStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: true, 
                 video: false 
             });
-            console.log('Using fallback audio settings');
-            return fallbackStream;
-        } catch (fallbackErr) {
-            console.error('Fallback also failed:', fallbackErr);
-            
-            // Last resort - basic audio
-            try {
-                const basicStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: true, 
-                    video: false 
-                });
-                console.log('Using basic audio without processing');
-                return basicStream;
-            } catch (finalErr) {
-                console.error('All audio access attempts failed:', finalErr);
-                throw finalErr;
-            }
+            console.log('Using basic audio without processing');
+            return basicStream;
+        } catch (finalErr) {
+            console.error('All audio access attempts failed:', finalErr);
+            throw finalErr;
         }
     }
 }
@@ -211,29 +264,17 @@ async function updateAudioSettings() {
     // Stop current tracks
     localStream.getTracks().forEach(track => track.stop());
     
-    // Close audio processor to reinitialize
-    await audioProcessor.close();
+    // Close processors to reinitialize
+    await rnnoiseProcessor.close();
+    await webAudioProcessor.close();
 
     try {
         // Get new stream with updated settings
         localStream = await getMediaStreamWithSettings();
         
         // Update all peer connections with new stream
-        pcMap.forEach((pc, peerId) => {
-            const senders = pc.getSenders();
-            const audioTrack = localStream.getAudioTracks()[0];
-            
-            const audioSender = senders.find(sender => 
-                sender.track && sender.track.kind === 'audio'
-            );
-            
-            if (audioSender && audioTrack) {
-                audioSender.replaceTrack(audioTrack).catch(err => {
-                    console.warn('Could not replace track for peer:', peerId, err);
-                });
-            }
-        });
-
+        updateAllPeerConnections();
+        
         // Restore mic state
         localStream.getTracks().forEach(track => {
             track.enabled = wasMicOn;
@@ -248,10 +289,29 @@ async function updateAudioSettings() {
     }
 }
 
+function updateAllPeerConnections() {
+    pcMap.forEach((pc, peerId) => {
+        const senders = pc.getSenders();
+        const audioTrack = localStream.getAudioTracks()[0];
+        
+        const audioSender = senders.find(sender => 
+            sender.track && sender.track.kind === 'audio'
+        );
+        
+        if (audioSender && audioTrack) {
+            audioSender.replaceTrack(audioTrack).catch(err => {
+                console.warn('Could not replace track for peer:', peerId, err);
+            });
+        }
+    });
+}
+
 function showNotification(message, type = 'info') {
-    // Create notification element
+    // Remove existing notifications
+    document.querySelectorAll('.audio-notification').forEach(el => el.remove());
+    
     const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
+    notification.className = `audio-notification fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
         type === 'success' ? 'bg-green-500' : 
         type === 'error' ? 'bg-red-500' : 'bg-blue-500'
     } text-white`;
@@ -259,7 +319,6 @@ function showNotification(message, type = 'info') {
     
     document.body.appendChild(notification);
     
-    // Remove after 3 seconds
     setTimeout(() => {
         notification.remove();
     }, 3000);
@@ -273,30 +332,10 @@ async function init() {
         myIdDisplay.textContent = myId;
         addParticipantCard(myId, true, usernameInput.value);
         
-        // Test audio quality
-        await testAudioQuality();
-        
     } catch (err) {
         console.error('Microphone access error:', err);
-        lobbyError.textContent = 'Microphone access is required to use this app. Please allow microphone access and refresh the page.';
+        lobbyError.textContent = 'Microphone access is required. Please allow microphone access and refresh.';
         joinBtn.disabled = true;
-    }
-}
-
-async function testAudioQuality() {
-    // Simple audio quality test
-    if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
-            const settings = audioTrack.getSettings();
-            console.log('Audio settings applied:', {
-                sampleRate: settings.sampleRate,
-                channelCount: settings.channelCount,
-                noiseSuppression: settings.noiseSuppression,
-                echoCancellation: settings.echoCancellation,
-                autoGainControl: settings.autoGainControl
-            });
-        }
     }
 }
 
@@ -321,7 +360,6 @@ function toggleMic(state) {
 // Event listeners
 micToggleBtn.addEventListener('click', () => toggleMic(!isMicOn));
 
-// Keyboard controls with better handling
 let isKeyPressed = false;
 window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'm' && !isKeyPressed && 
@@ -341,10 +379,10 @@ window.addEventListener('keyup', (e) => {
     }
 });
 
-// Apply audio settings button
+// Apply audio settings
 applyAudioSettings.addEventListener('click', updateAudioSettings);
 
-// Sync lobby and room audio settings in real-time
+// Sync settings
 roomNoiseSuppression.addEventListener('change', () => {
     noiseSuppressionCheckbox.checked = roomNoiseSuppression.checked;
 });
@@ -353,7 +391,7 @@ roomEchoCancellation.addEventListener('change', () => {
     echoCancellationCheckbox.checked = roomEchoCancellation.checked;
 });
 
-// Approval queue management
+// Approval queue
 function processApprovalQueue() {
     if (isProcessingApproval || approvalQueue.length === 0) return;
     isProcessingApproval = true;
@@ -395,10 +433,9 @@ joinBtn.addEventListener('click', () => {
 });
 
 leaveBtn.addEventListener('click', () => {
-    // Clean up audio resources
-    audioProcessor.close();
+    rnnoiseProcessor.close();
+    webAudioProcessor.close();
     
-    // Stop all media tracks
     if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
     }
@@ -420,7 +457,6 @@ function showLobby() {
     participants.innerHTML = '';
     audioContainer.innerHTML = '';
     
-    // Close all peer connections
     pcMap.forEach(pc => pc.close());
     pcMap.clear();
     
@@ -480,11 +516,9 @@ function updateSpeakingStatus(id, isSpeaking) {
     }
 }
 
-// Socket event handlers
+// Socket events
 socket.on('connect', init);
-
 socket.on('room-created', (code) => showRoom(code));
-
 socket.on('join-accepted', ({ roomID, existingUsers, usernames }) => {
     showRoom(roomID);
     existingUsers.forEach(id => {
@@ -492,16 +526,13 @@ socket.on('join-accepted', ({ roomID, existingUsers, usernames }) => {
         createPeerConnection(id, true);
     });
 });
-
 socket.on('approval-request', ({ guestId, username, roomID }) => {
     approvalQueue.push({ guestId, username, roomID });
     processApprovalQueue();
 });
-
 socket.on('new-user', ({ id, username }) => {
     addParticipantCard(id, false, username);
 });
-
 socket.on('user-disconnected', (userId) => {
     const pc = pcMap.get(userId);
     if (pc) {
@@ -512,24 +543,21 @@ socket.on('user-disconnected', (userId) => {
     const audioEl = document.getElementById(`audio-${userId}`);
     if (audioEl) audioEl.remove();
 });
-
 socket.on('room-full', () => {
     document.getElementById('loading-screen').classList.add('hidden');
     lobby.classList.remove('hidden');
     lobbyError.textContent = 'Sorry, that room is full (max 4 users).';
 });
-
 socket.on('join-rejected', () => {
     document.getElementById('loading-screen').classList.add('hidden');
     lobby.classList.remove('hidden');
     lobbyError.textContent = 'Your request to join was rejected.';
 });
-
 socket.on('user-speaking', ({ userId, speaking }) => {
     updateSpeakingStatus(userId, speaking);
 });
 
-// WebRTC functions
+// WebRTC
 async function createPeerConnection(peerId, isOfferer) {
     if (!localStream) return;
     
@@ -542,7 +570,6 @@ async function createPeerConnection(peerId, isOfferer) {
     
     pcMap.set(peerId, pc);
     
-    // Add all audio tracks
     localStream.getAudioTracks().forEach(track => {
         pc.addTrack(track, localStream);
     });
@@ -560,14 +587,10 @@ async function createPeerConnection(peerId, isOfferer) {
             audioEl.id = `audio-${peerId}`;
             audioEl.autoplay = true;
             audioEl.controls = false;
-            audioEl.style.display = 'none'; // Hide but keep functional
+            audioEl.style.display = 'none';
             audioContainer.appendChild(audioEl);
         }
         audioEl.srcObject = event.streams[0];
-    };
-    
-    pc.onconnectionstatechange = () => {
-        console.log(`Connection state with ${peerId}: ${pc.connectionState}`);
     };
     
     if (isOfferer) {
